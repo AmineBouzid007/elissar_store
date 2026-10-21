@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils"
 export const metadata = { title: "Payments" }
 export const dynamic = "force-dynamic"
 
-const PROVIDER_LABEL = { none: "Off", mock: "Test mode", clictopay: "ClicToPay" } as const
+const PROVIDER_LABEL = { none: "No provider chosen", mock: "Test mode", clictopay: "ClicToPay" } as const
+const orders = (n: number) => `${n} ${n === 1 ? "order" : "orders"}`
 const ATTEMPT_STYLE: Record<PaymentRow["status"], string> = {
   pending: "border-foreground/20 bg-foreground/5 text-foreground/70",
   paid: "border-primary bg-primary text-primary-foreground",
@@ -39,7 +40,7 @@ export default async function PaymentsPage() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2"><p className="font-medium">Cash on delivery</p><span className="rounded-md border border-primary bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">On</span></div>
               <p className="mt-1 text-sm text-foreground/50">The customer pays in cash when the order arrives. Always available.</p>
-              {totals && <p className="mt-2 text-xs text-foreground/40">{totals.cashOrders} orders so far</p>}
+              {totals && <p className="mt-2 text-xs text-foreground/40">{orders(totals.cashOrders)} so far</p>}
             </div>
           </div>
 
@@ -49,10 +50,10 @@ export default async function PaymentsPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-medium">Card payment</p>
                 <span className={cn("rounded-md border px-2 py-0.5 text-xs font-medium", setup.cardEnabled ? "border-primary bg-primary text-primary-foreground" : "border-foreground/20 text-foreground/60")}>{setup.cardEnabled ? "On" : "Off"}</span>
-                <span className="rounded-md border border-foreground/15 px-2 py-0.5 text-xs text-foreground/60">{PROVIDER_LABEL[setup.provider]}</span>
+                {setup.provider !== "none" && <span className="rounded-md border border-foreground/15 px-2 py-0.5 text-xs text-foreground/60">{PROVIDER_LABEL[setup.provider]}</span>}
               </div>
               <p className="mt-1 text-sm text-foreground/50">{setup.summary}</p>
-              {totals && <p className="mt-2 text-xs text-foreground/40">{totals.cardOrders} orders so far</p>}
+              {totals && <p className="mt-2 text-xs text-foreground/40">{orders(totals.cardOrders)} so far</p>}
             </div>
           </div>
         </div>
@@ -85,7 +86,7 @@ export default async function PaymentsPage() {
         <>
           {totals && (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard label="Paid by card" value={formatPrice(totals.paidAmount, cur)} hint={`${totals.paidCount} orders`} icon={CheckCircle2} accent />
+              <StatCard label="Paid by card" value={formatPrice(totals.paidAmount, cur)} hint={orders(totals.paidCount)} icon={CheckCircle2} accent />
               <StatCard label="Waiting for the bank" value={totals.waiting.toLocaleString()} hint="Customer has not finished paying" icon={Clock} />
               <StatCard label="Failed or abandoned" value={totals.failed.toLocaleString()} hint="Stock was put back" icon={XCircle} />
               <StatCard label="Needs your attention" value={totals.needsReview.toLocaleString()} hint="Wrong amount, or paid but cancelled" icon={AlertTriangle} />
