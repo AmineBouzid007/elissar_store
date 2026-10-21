@@ -22,7 +22,7 @@ export function mockAllowed() {
 export function isCardPaymentEnabled() {
   const p = paymentProvider()
   if (p === "mock") return mockAllowed()
-  if (p === "clictopay") return Boolean(process.env.CLICTOPAY_USERNAME && process.env.CLICTOPAY_PASSWORD)
+  if (p === "clictopay") return Boolean(process.env.CLICTOPAY_USERNAME && process.env.CLICTOPAY_PASSWORD && process.env.CLICTOPAY_BASE_URL)
   return false
 }
 
