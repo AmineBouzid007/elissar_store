@@ -2,7 +2,7 @@ import "server-only"
 import { randomBytes } from "node:crypto"
 import { z } from "zod"
 import { query, withTx } from "@/lib/db"
-import { COLORS, GOVERNORATES, MAX_QTY_PER_LINE, SIZES, type OrderStatus, type PaymentStatus } from "@/lib/constants"
+import { COLORS, GOVERNORATES, MAX_QTY_PER_LINE, PAYMENT_METHODS, SIZES, type OrderStatus, type PaymentMethod, type PaymentStatus } from "@/lib/constants"
 import { computeShipping, getSettings } from "@/lib/data/settings"
 import type { Order, OrderItem } from "@/lib/types"
 
@@ -21,6 +21,7 @@ export const checkoutSchema = z.object({
   address: z.string().trim().min(5, "Entrez votre adresse complète").max(240),
   postal_code: z.string().trim().max(10).default(""),
   notes: z.string().trim().max(500).default(""),
+  payment_method: z.enum(PAYMENT_METHODS).default("cod"),
   items: z
     .array(
       z.object({
@@ -39,7 +40,9 @@ export function normalizePhone(p: string) {
   return p.replace(/[\s.-]/g, "").replace(/^(\+216|00216)/, "")
 }
 
-export async function createOrder(input: CheckoutInput): Promise<{ number: string; token: string }> {
+export async function createOrder(
+  input: CheckoutInput,
+): Promise<{ id: string; number: string; token: string; total: number }> {
   const settings = await getSettings()
   if (!settings.store_open) throw new OrderError("La boutique est fermée pour le moment. Revenez bientôt.")
 
@@ -106,11 +109,11 @@ export async function createOrder(input: CheckoutInput): Promise<{ number: strin
 
     const ins = await db.query(
       `insert into orders (number, public_token, customer_name, phone, email, governorate, city, address,
-         postal_code, notes, subtotal, shipping, total)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning id`,
+         postal_code, notes, subtotal, shipping, total, payment_method)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning id`,
       [
         number, token, input.full_name, normalizePhone(input.phone), input.email, input.governorate, input.city,
-        input.address, input.postal_code, input.notes, subtotal, shipping, total,
+        input.address, input.postal_code, input.notes, subtotal, shipping, total, input.payment_method,
       ],
     )
     const orderId = ins.rows[0].id
@@ -122,7 +125,7 @@ export async function createOrder(input: CheckoutInput): Promise<{ number: strin
       )
       await db.query(`update variants set stock = stock - $1 where id = $2`, [r.quantity, r.variantId])
     }
-    return { number, token }
+    return { id: orderId as string, number, token, total }
   })
 }
 
@@ -141,8 +144,10 @@ function mapOrder(r: any, items: OrderItem[]): Order {
     subtotal: Number(r.subtotal),
     shipping: Number(r.shipping),
     total: Number(r.total),
-    payment_method: "cod",
+    payment_method: r.payment_method as PaymentMethod,
     payment_status: r.payment_status,
+    gateway_order_id: r.gateway_order_id ?? "",
+    paid_at: r.paid_at ? new Date(r.paid_at).toISOString() : null,
     status: r.status,
     created_at: new Date(r.created_at).toISOString(),
     items,
@@ -229,14 +234,34 @@ export async function adminSetOrderStatus(id: string, status: OrderStatus) {
       }
       for (const it of items.rows) await db.query(`update variants set stock = stock - $1 where id = $2`, [it.quantity, it.vid])
     }
-    // delivered cash-on-delivery orders are paid
-    if (status === "delivered") await db.query(`update orders set payment_status = 'paid' where id = $1 and payment_status = 'unpaid'`, [id])
+    // delivered cash-on-delivery orders are paid (card orders are settled by the gateway, never by delivery)
+    if (status === "delivered") {
+      await db.query(
+        `update orders set payment_status = 'paid', paid_at = now()
+         where id = $1 and payment_status = 'unpaid' and payment_method = 'cod'`,
+        [id],
+      )
+    }
     await db.query(`update orders set status = $1 where id = $2`, [status, id])
   })
 }
 
 export async function adminSetPaymentStatus(id: string, status: PaymentStatus) {
-  await query(`update orders set payment_status = $1 where id = $2`, [status, id])
+  await query(
+    `update orders set payment_status = $1,
+       paid_at = case when $1 = 'paid' then coalesce(paid_at, now()) else paid_at end
+     where id = $2`,
+    [status, id],
+  )
+}
+
+/** Puts the stock of every line of an order back on the shelf. Call inside a transaction, once per cancellation. */
+export async function restoreOrderStock(db: { query: (sql: string, params?: unknown[]) => Promise<unknown> }, orderId: string) {
+  await db.query(
+    `update variants v set stock = v.stock + oi.quantity
+     from order_items oi where oi.order_id = $1 and oi.variant_id = v.id`,
+    [orderId],
+  )
 }
 
 export async function adminDeleteOrder(id: string) {

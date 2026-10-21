@@ -18,7 +18,15 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   cancelled: "Annulée",
 }
 
-export const PAYMENT_STATUSES = ["unpaid", "paid", "refunded"] as const
+export const PAYMENT_METHODS = ["cod", "card"] as const
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number]
+
+export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  cod: "Paiement à la livraison",
+  card: "Carte bancaire",
+}
+
+export const PAYMENT_STATUSES = ["unpaid", "paid", "failed", "refunded"] as const
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number]
 
 export const GOVERNORATES = [

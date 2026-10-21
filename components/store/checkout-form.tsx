@@ -3,11 +3,11 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState, useTransition } from "react"
-import { Banknote } from "lucide-react"
+import { Banknote, CreditCard } from "lucide-react"
 import { toast } from "sonner"
 import { placeOrderAction } from "@/app/actions/checkout"
 import { useCart } from "@/lib/cart-context"
-import { COLOR_LABEL, GOVERNORATES } from "@/lib/constants"
+import { COLOR_LABEL, GOVERNORATES, type PaymentMethod } from "@/lib/constants"
 import { formatPrice } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { ProductImage } from "./product-image"
@@ -15,11 +15,13 @@ import { ProductImage } from "./product-image"
 const PROFILE_KEY = "noct_profile_v1"
 const field = "w-full border border-border bg-transparent px-4 py-3.5 text-base outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-foreground"
 
-export function CheckoutForm({ dbReady, storeOpen }: { dbReady: boolean; storeOpen: boolean }) {
+export function CheckoutForm({ dbReady, storeOpen, cardEnabled, paymentFailed }: { dbReady: boolean; storeOpen: boolean; cardEnabled: boolean; paymentFailed: boolean }) {
   const c = useCart()
   const router = useRouter()
   const [pending, start] = useTransition()
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [method, setMethod] = useState<PaymentMethod>("cod")
+  const [redirecting, setRedirecting] = useState(false)
   const [form, setForm] = useState({
     full_name: "", phone: "", email: "", governorate: "Tunis", city: "", address: "", postal_code: "", notes: "", website: "",
   })
@@ -40,6 +42,7 @@ export function CheckoutForm({ dbReady, storeOpen }: { dbReady: boolean; storeOp
     start(async () => {
       const res = await placeOrderAction({
         ...form,
+        payment_method: cardEnabled ? method : "cod",
         items: c.items.map((i) => ({ productId: i.productId, size: i.size, color: i.color, quantity: i.quantity })),
       })
       if (!res.ok) {
@@ -51,6 +54,12 @@ export function CheckoutForm({ dbReady, storeOpen }: { dbReady: boolean; storeOp
         const { notes: _n, website: _w, ...profile } = form
         localStorage.setItem(PROFILE_KEY, JSON.stringify(profile))
       } catch { /* ignore */ }
+      if (res.redirectUrl) {
+        // card payment: keep the cart until the payment is confirmed (it is cleared on the confirmation page)
+        setRedirecting(true)
+        window.location.assign(res.redirectUrl)
+        return
+      }
       c.clear()
       router.push(`/checkout/confirmation/${res.number}?k=${res.token}`)
     })
@@ -71,6 +80,7 @@ export function CheckoutForm({ dbReady, storeOpen }: { dbReady: boolean; storeOp
     <div className="mx-auto max-w-[1400px] px-5 py-12 lg:px-10 lg:py-16">
       <h1 className="font-display mb-10 text-5xl sm:text-7xl">Commander</h1>
       {!dbReady && <p className="label-mono mb-8 border border-border p-4 text-muted-foreground">Les commandes ne sont pas encore activées : la base de données n&apos;est pas connectée.</p>}
+      {paymentFailed && <p role="alert" className="label-mono mb-8 border border-destructive p-4 text-destructive">Le paiement n&apos;a pas abouti et rien n&apos;a été débité. Vous pouvez réessayer ou choisir le paiement à la livraison.</p>}
       {!storeOpen && <p className="label-mono mb-8 border border-border p-4 text-muted-foreground">La boutique est fermée pour le moment. Les commandes reprendront bientôt.</p>}
 
       <form onSubmit={submit} className="grid gap-12 lg:grid-cols-[1fr_420px]" noValidate>
@@ -105,12 +115,25 @@ export function CheckoutForm({ dbReady, storeOpen }: { dbReady: boolean; storeOp
 
           <section>
             <h2 className="font-display mb-6 text-2xl">Paiement</h2>
-            <div className="flex items-start gap-4 border border-foreground p-5">
-              <Banknote className="mt-0.5 size-5 shrink-0" />
-              <div>
-                <p className="font-display text-base">Paiement à la livraison</p>
-                <p className="mt-1 text-sm text-muted-foreground">Vous payez en espèces à la réception de votre commande. Rien n'est débité maintenant.</p>
-              </div>
+            <div role="radiogroup" aria-label="Mode de paiement" className="space-y-3">
+              <label className={cn("flex cursor-pointer items-start gap-4 border p-5 transition-colors", method === "cod" || !cardEnabled ? "border-foreground" : "border-border hover:border-foreground/50")}>
+                <input type="radio" name="payment_method" value="cod" checked={method === "cod" || !cardEnabled} onChange={() => setMethod("cod")} className="sr-only" />
+                <Banknote className="mt-0.5 size-5 shrink-0" />
+                <div>
+                  <p className="font-display text-base">Paiement à la livraison</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Vous payez en espèces à la réception de votre commande. Rien n&apos;est débité maintenant.</p>
+                </div>
+              </label>
+              {cardEnabled && (
+                <label className={cn("flex cursor-pointer items-start gap-4 border p-5 transition-colors", method === "card" ? "border-foreground" : "border-border hover:border-foreground/50")}>
+                  <input type="radio" name="payment_method" value="card" checked={method === "card"} onChange={() => setMethod("card")} className="sr-only" />
+                  <CreditCard className="mt-0.5 size-5 shrink-0" />
+                  <div>
+                    <p className="font-display text-base">Carte bancaire</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Vous êtes redirigée vers la page de paiement sécurisée de la banque. Nous ne voyons ni ne conservons les données de votre carte.</p>
+                  </div>
+                </label>
+              )}
             </div>
           </section>
         </div>
@@ -134,10 +157,12 @@ export function CheckoutForm({ dbReady, storeOpen }: { dbReady: boolean; storeOp
             <div className="flex justify-between text-muted-foreground"><span>Livraison</span><span className="font-mono">{c.shipping === 0 ? "Offerte" : formatPrice(c.shipping, c.currency)}</span></div>
           </div>
           <div className="mt-5 flex justify-between border-t border-border pt-5"><span className="font-display text-xl">Total</span><span className="font-mono text-xl">{formatPrice(c.total, c.currency)}</span></div>
-          <button type="submit" disabled={pending || !dbReady || !storeOpen} className="label-mono mt-6 w-full bg-foreground py-5 text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
-            {pending ? "Envoi en cours…" : "Confirmer la commande"}
+          <button type="submit" disabled={pending || redirecting || !dbReady || !storeOpen} className="label-mono mt-6 w-full bg-foreground py-5 text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
+            {redirecting ? "Redirection vers la banque…" : pending ? "Envoi en cours…" : method === "card" && cardEnabled ? "Payer par carte" : "Confirmer la commande"}
           </button>
-          <p className="label-mono mt-4 text-center text-muted-foreground">You pay {formatPrice(c.total, c.currency)} in cash on delivery</p>
+          <p className="label-mono mt-4 text-center text-muted-foreground">
+            {method === "card" && cardEnabled ? `Paiement sécurisé de ${formatPrice(c.total, c.currency)} par carte` : `Vous payez ${formatPrice(c.total, c.currency)} en espèces à la livraison`}
+          </p>
         </aside>
       </form>
     </div>

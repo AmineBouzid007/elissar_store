@@ -28,7 +28,7 @@ export function OrdersTable({ orders, currency, compact }: { orders: Order[]; cu
                 {!compact && (
                   <td className="px-4 py-3 text-foreground/60"><div className="max-w-[260px] truncate">{o.items.map((i) => `${i.product_name} (${COLOR_LABEL[i.color as "black" | "white"] ?? i.color} ${i.size}) ×${i.quantity}`).join(", ")}</div></td>
                 )}
-                <td className="px-4 py-3 font-medium">{formatPrice(o.total, currency)}</td>
+                <td className="px-4 py-3 font-medium">{formatPrice(o.total, currency)}<div className="text-xs font-normal text-foreground/40">{o.payment_method === "card" ? "Card" : "Cash"} · {o.payment_status}</div></td>
                 <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
                 <td className="px-4 py-3 text-foreground/50">{formatDate(o.created_at)}</td>
               </tr>

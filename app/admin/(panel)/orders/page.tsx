@@ -1,6 +1,8 @@
 import Link from "next/link"
 import { Search } from "lucide-react"
 import { adminListOrders } from "@/lib/data/orders"
+import { isCardPaymentEnabled } from "@/lib/payments"
+import { reconcileStaleCardOrders } from "@/lib/payments/service"
 import { getSettings } from "@/lib/data/settings"
 import { ORDER_STATUSES, ORDER_STATUS_LABEL } from "@/lib/constants"
 import { OrdersTable } from "@/components/admin/orders-table"
@@ -11,13 +13,15 @@ export const metadata = { title: "Orders" }
 
 export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
   const { status = "all", q = "" } = await searchParams
+  // best effort: re-check card orders left hanging and release the stock of expired ones
+  if (isCardPaymentEnabled()) await reconcileStaleCardOrders().catch((e) => console.error("[orders] reconcile failed", e))
   const [orders, settings] = await Promise.all([adminListOrders({ status, q }), getSettings()])
   const tabs = ["all", ...ORDER_STATUSES]
   const href = (s: string) => `/admin/orders?${new URLSearchParams({ ...(s !== "all" ? { status: s } : {}), ...(q ? { q } : {}) })}`
 
   return (
     <div>
-      <PageHeader title="Orders" description="Cash-on-delivery orders. Click an order to confirm, ship or cancel it." />
+      <PageHeader title="Orders" description="Cash-on-delivery and card orders. Click an order to confirm, ship or cancel it." />
       <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap gap-2">
           {tabs.map((s) => (

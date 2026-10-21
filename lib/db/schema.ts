@@ -1,6 +1,6 @@
 // Idempotent schema. Runs automatically the first time the site talks to the
 // database (see lib/db/index.ts) and again whenever SCHEMA_VERSION is bumped.
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 export const SCHEMA_SQL = /* sql */ `
 create extension if not exists pgcrypto;
@@ -64,11 +64,36 @@ create table if not exists orders (
   subtotal numeric(10,2) not null default 0,
   shipping numeric(10,2) not null default 0,
   total numeric(10,2) not null default 0,
-  payment_method text not null default 'cod' check (payment_method in ('cod')),
-  payment_status text not null default 'unpaid' check (payment_status in ('unpaid','paid','refunded')),
+  payment_method text not null default 'cod',
+  payment_status text not null default 'unpaid',
+  gateway_order_id text not null default '',
+  paid_at timestamptz,
   status text not null default 'pending' check (status in ('pending','confirmed','shipped','delivered','cancelled')),
   created_at timestamptz not null default now()
 );
+
+-- v2: online card payments. Idempotent, so it also upgrades databases created by v1.
+alter table orders add column if not exists gateway_order_id text not null default '';
+alter table orders add column if not exists paid_at timestamptz;
+alter table orders drop constraint if exists orders_payment_method_check;
+alter table orders add constraint orders_payment_method_check check (payment_method in ('cod','card'));
+alter table orders drop constraint if exists orders_payment_status_check;
+alter table orders add constraint orders_payment_status_check check (payment_status in ('unpaid','paid','failed','refunded'));
+
+-- One row per payment session opened at a gateway (audit trail + mock gateway state).
+create table if not exists payment_attempts (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references orders(id) on delete cascade,
+  gateway text not null,
+  gateway_order_id text not null,
+  amount_millimes bigint not null check (amount_millimes > 0),
+  status text not null default 'pending' check (status in ('pending','paid','failed','mismatch')),
+  raw jsonb not null default '{}',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (gateway, gateway_order_id)
+);
+create index if not exists idx_payment_attempts_order on payment_attempts(order_id);
 
 create table if not exists order_items (
   id uuid primary key default gen_random_uuid(),

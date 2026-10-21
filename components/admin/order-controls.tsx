@@ -4,10 +4,10 @@ import { useState, useTransition } from "react"
 import { Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { deleteOrderAction, setOrderStatusAction, setPaymentStatusAction } from "@/app/admin/actions"
-import { ORDER_STATUSES, ORDER_STATUS_LABEL, PAYMENT_STATUSES, type OrderStatus, type PaymentStatus } from "@/lib/constants"
+import { ORDER_STATUSES, ORDER_STATUS_LABEL, PAYMENT_STATUSES, type OrderStatus, type PaymentMethod, type PaymentStatus } from "@/lib/constants"
 import { card, inputCls } from "./ui"
 
-export function OrderControls({ id, status, payment }: { id: string; status: OrderStatus; payment: PaymentStatus }) {
+export function OrderControls({ id, status, payment, method }: { id: string; status: OrderStatus; payment: PaymentStatus; method: PaymentMethod }) {
   const [pending, start] = useTransition()
   const [s, setS] = useState(status)
   const [p, setP] = useState(payment)
@@ -39,10 +39,11 @@ export function OrderControls({ id, status, payment }: { id: string; status: Ord
         <p className="mt-2 text-xs text-foreground/40">Cancelling puts the pieces back in stock.</p>
       </div>
       <div>
-        <label htmlFor="payment" className="mb-1.5 block text-xs uppercase tracking-wide text-foreground/40">Payment (cash)</label>
+        <label htmlFor="payment" className="mb-1.5 block text-xs uppercase tracking-wide text-foreground/40">{method === "card" ? "Payment (card)" : "Payment (cash)"}</label>
         <select id="payment" disabled={pending} value={p} onChange={(e) => changePayment(e.target.value as PaymentStatus)} className={inputCls}>
           {PAYMENT_STATUSES.map((o) => <option key={o} value={o} className="bg-card">{o[0].toUpperCase() + o.slice(1)}</option>)}
         </select>
+        {method === "card" && <p className="mt-2 text-xs text-foreground/40">Card payments are confirmed by the bank automatically. Only change this by hand for a refund or an exception.</p>}
       </div>
       <button type="button" disabled={pending} onClick={() => { if (confirm("Delete this order permanently? Stock will be restored.")) start(() => deleteOrderAction(id)) }}
         className="inline-flex items-center gap-2 text-xs text-red-400/80 hover:text-red-400"><Trash2 className="size-3.5" />Delete order</button>

@@ -1,4 +1,4 @@
-import type { Color, OrderStatus, PaymentStatus, Size } from "@/lib/constants"
+import type { Color, OrderStatus, PaymentMethod, PaymentStatus, Size } from "@/lib/constants"
 
 export interface Variant {
   id: string
@@ -91,8 +91,11 @@ export interface Order {
   subtotal: number
   shipping: number
   total: number
-  payment_method: "cod"
+  payment_method: PaymentMethod
   payment_status: PaymentStatus
+  /** id of the latest payment session at the gateway (card orders only) */
+  gateway_order_id: string
+  paid_at: string | null
   status: OrderStatus
   created_at: string
   items: OrderItem[]

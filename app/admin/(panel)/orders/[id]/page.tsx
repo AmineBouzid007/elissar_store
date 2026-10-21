@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 import { ArrowLeft, MessageCircle, Phone } from "lucide-react"
 import { adminGetOrder } from "@/lib/data/orders"
 import { getSettings } from "@/lib/data/settings"
-import { COLOR_LABEL } from "@/lib/constants"
+import { COLOR_LABEL, PAYMENT_METHOD_LABEL } from "@/lib/constants"
 import { formatDateTime, formatPrice } from "@/lib/format"
 import { OrderControls } from "@/components/admin/order-controls"
 import { StatusBadge, card } from "@/components/admin/ui"
@@ -41,14 +41,23 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <div className="space-y-2 border-t border-foreground/10 p-4 text-sm">
               <div className="flex justify-between text-foreground/60"><span>Subtotal</span><span>{formatPrice(order.subtotal, cur)}</span></div>
               <div className="flex justify-between text-foreground/60"><span>Delivery</span><span>{order.shipping === 0 ? "Free" : formatPrice(order.shipping, cur)}</span></div>
-              <div className="flex justify-between border-t border-foreground/10 pt-3 text-base font-semibold"><span>Collect on delivery</span><span>{formatPrice(order.total, cur)}</span></div>
+              <div className="flex justify-between border-t border-foreground/10 pt-3 text-base font-semibold"><span>{order.payment_method === "card" ? (order.payment_status === "paid" ? "Paid by card" : "Total") : "Collect on delivery"}</span><span>{formatPrice(order.total, cur)}</span></div>
             </div>
           </div>
           {order.notes && <div className={`${card} p-4 text-sm`}><p className="mb-1 text-xs uppercase tracking-wide text-foreground/40">Customer note</p>{order.notes}</div>}
         </div>
 
         <div className="space-y-4">
-          <OrderControls id={order.id} status={order.status} payment={order.payment_status} />
+          <OrderControls id={order.id} status={order.status} payment={order.payment_status} method={order.payment_method} />
+          <div className={`${card} p-5 text-sm`}>
+            <p className="mb-3 text-xs uppercase tracking-wide text-foreground/40">Payment</p>
+            <p className="font-medium">{PAYMENT_METHOD_LABEL[order.payment_method]}</p>
+            <p className="mt-1 text-foreground/60 capitalize">{order.payment_status}{order.paid_at ? ` · ${formatDateTime(order.paid_at)}` : ""}</p>
+            {order.gateway_order_id && <p className="mt-1 break-all font-mono text-xs text-foreground/40">{order.gateway_order_id}</p>}
+            {order.payment_method === "card" && order.status === "cancelled" && order.payment_status === "paid" && (
+              <p className="mt-3 rounded-md border border-amber-400/40 p-3 text-xs text-amber-400">Cancelled but paid: refund the customer, or set the order back to another status to fulfil it.</p>
+            )}
+          </div>
           <div className={`${card} p-5 text-sm`}>
             <p className="mb-3 text-xs uppercase tracking-wide text-foreground/40">Customer</p>
             <p className="font-medium">{order.customer_name}</p>
