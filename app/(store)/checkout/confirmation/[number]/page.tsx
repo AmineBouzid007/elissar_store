@@ -17,7 +17,7 @@ export default async function ConfirmationPage({ params, searchParams }: { param
   const cur = settings.currency
   return (
     <div className="mx-auto max-w-3xl px-5 py-16 lg:py-24">
-      <LogoMark className="mb-8 h-14 w-auto" />
+      <LogoMark className="mb-8 h-14 w-auto text-primary" />
       <p className="label-mono text-muted-foreground">Commande {order.number}</p>
       <h1 className="font-display mt-3 text-5xl sm:text-7xl">Commande reçue</h1>
       <p className="mt-6 max-w-lg text-lg text-muted-foreground">

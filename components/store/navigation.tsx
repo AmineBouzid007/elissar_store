@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useState } from "react"
 import { Menu, Search, ShoppingBag, X } from "lucide-react"
-import { LogoWordmark } from "@/components/brand/logo"
+import { LogoMark, LogoWordmark } from "@/components/brand/logo"
 import { useCart } from "@/lib/cart-context"
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 
@@ -30,7 +30,7 @@ export function Navigation({ categories }: Props) {
         </button>
 
         <Link href="/" aria-label="Elissar, accueil" className="shrink-0">
-          <LogoWordmark className="h-[18px] w-auto text-foreground md:h-5" />
+          <LogoWordmark className="h-9 w-auto text-foreground md:h-11" />
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex" aria-label="Principal">
@@ -63,7 +63,7 @@ export function Navigation({ categories }: Props) {
           <SheetTitle className="sr-only">Menu</SheetTitle>
           <SheetDescription className="sr-only">Navigation du site</SheetDescription>
           <div className="flex h-16 items-center justify-between border-b border-border px-5">
-            <LogoWordmark className="h-[18px] w-auto" />
+            <LogoMark className="h-10 w-auto text-primary" />
             <button aria-label="Fermer le menu" onClick={() => setMenu(false)} className="-mr-2 p-2">
               <X className="size-5" />
             </button>

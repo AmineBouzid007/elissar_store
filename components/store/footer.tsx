@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Instagram } from "lucide-react"
-import { LogoLockup, LogoMark } from "@/components/brand/logo"
+import { LogoMark, LogoWordmark } from "@/components/brand/logo"
 import type { StoreSettings } from "@/lib/types"
 
 export function Footer({ settings, categories }: { settings: StoreSettings; categories: { name: string; slug: string }[] }) {
@@ -10,7 +10,7 @@ export function Footer({ settings, categories }: { settings: StoreSettings; cate
       <LogoMark className="pointer-events-none absolute -right-10 -top-10 h-[420px] w-auto text-foreground/[0.03]" />
       <div className="relative mx-auto grid max-w-[1400px] gap-12 px-5 py-16 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-10">
         <div>
-          <LogoLockup className="h-9 w-auto" />
+          <LogoWordmark className="h-10 w-auto" />
           <p className="mt-6 max-w-xs text-sm leading-relaxed text-muted-foreground">
             Maison de couture tunisienne. Des pièces uniques qui revisitent le patrimoine vestimentaire, entre tradition et modernité.
           </p>

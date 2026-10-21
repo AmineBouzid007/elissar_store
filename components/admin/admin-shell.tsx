@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
 import { ExternalLink, FolderTree, LayoutDashboard, LogOut, Menu, Package, Settings, ShoppingBag, Users, X } from "lucide-react"
-import { LogoMark, LogoWordmark } from "@/components/brand/logo"
+import { LogoMark } from "@/components/brand/logo"
 import { logoutAction } from "@/app/admin/actions"
 import { cn } from "@/lib/utils"
 
@@ -24,7 +24,7 @@ export function AdminShell({ children, email }: { children: React.ReactNode; ema
   const sidebar = (
     <>
       <div className="flex h-16 items-center gap-3 px-6">
-        <LogoMark className="h-6 w-auto text-foreground" />
+        <LogoMark className="h-8 w-auto text-primary" />
         <span className="text-sm font-semibold tracking-tight text-foreground">Elissar <span className="font-normal text-foreground/40">Admin</span></span>
         <button onClick={() => setOpen(false)} aria-label="Fermer le menu" className="ml-auto text-foreground/50 hover:text-foreground lg:hidden"><X className="size-5" /></button>
       </div>
@@ -60,7 +60,7 @@ export function AdminShell({ children, email }: { children: React.ReactNode; ema
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-foreground/10 bg-background/95 px-4 backdrop-blur sm:px-6">
           <button onClick={() => setOpen(true)} aria-label="Ouvrir le menu" className="text-foreground/70 hover:text-foreground lg:hidden"><Menu className="size-5" /></button>
-          <LogoWordmark className="h-4 w-auto text-foreground lg:hidden" />
+          <LogoMark className="h-7 w-auto text-primary lg:hidden" />
           <div className="ml-auto text-right"><p className="text-sm font-medium leading-tight">Admin</p><p className="text-xs leading-tight text-foreground/40">{email}</p></div>
         </header>
         <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>

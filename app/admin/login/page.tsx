@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import type { Metadata } from "next"
-import { LogoLockup } from "@/components/brand/logo"
+import { LogoMark } from "@/components/brand/logo"
 import { adminConfigured, getSession } from "@/lib/admin/auth"
 import { LoginForm } from "./login-form"
 
@@ -11,7 +11,7 @@ export default async function AdminLoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-5">
       <div className="w-full max-w-sm">
-        <LogoLockup className="mx-auto h-10 w-auto text-foreground" />
+        <LogoMark className="mx-auto block h-16 w-auto text-primary" />
         <p className="mt-6 text-center text-sm text-foreground/40">Admin</p>
         {adminConfigured() ? (
           <LoginForm />
